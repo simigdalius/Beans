@@ -2,7 +2,7 @@
 // server.js — Το σημείο εκκίνησης του backend του Beans
 // ---------------------------------------------------------------------
 // Τι κάνει:
-//   1. Ελέγχει ότι υπάρχουν οι απαραίτητες ρυθμίσεις (.env)
+//   1. Διαβάζει τις ρυθμίσεις (.env) και φτιάχνει μυστικό κλειδί αν χρειάζεται
 //   2. Δημιουργεί τον web server με τη βιβλιοθήκη Express
 //   3. Συνδέει τα "routes", δηλαδή ποιο αρχείο απαντά σε ποιο URL
 //   4. Ξεκινά να "ακούει" για αιτήματα από το κινητό (frontend)
@@ -16,16 +16,48 @@
 //   με app.use('/friends', ...), όπως γίνεται με το auth παρακάτω.
 // =====================================================================
 
-// --- 1. Έλεγχος ρυθμίσεων ---
+// --- 1. Ρυθμίσεις (.env) και μυστικό κλειδί ---
 // Το JWT_SECRET είναι το "μυστικό κλειδί" με το οποίο υπογράφονται τα tokens σύνδεσης.
-// Διαβάζεται από το αρχείο .env. Χωρίς αυτό ο server δεν πρέπει να ξεκινήσει,
-// γιατί οποιοσδήποτε θα μπορούσε να φτιάξει ψεύτικα tokens.
-if (!process.env.JWT_SECRET) {
-  console.error('Λείπει το JWT_SECRET. Φτιάξτε αρχείο .env (δείτε το .env.example).');
-  process.exit(1); // τερματίζει το πρόγραμμα με σφάλμα
+// Αν κάποιος το μάθει, μπορεί να φτιάξει ψεύτικα tokens και να μπει σε όποιον
+// λογαριασμό θέλει. Γι' αυτό κάθε υπολογιστής πρέπει να έχει το ΔΙΚΟ του, τυχαίο.
+//
+// Τι κάνει ο κώδικας παρακάτω:
+//   1. Διαβάζει το αρχείο .env (αν υπάρχει)
+//   2. Αν το JWT_SECRET λείπει ή είναι ακόμα το κείμενο-δείγμα του .env.example,
+//      φτιάχνει αυτόματα ένα τυχαίο και το γράφει στο .env.
+// Έτσι αρκούν οι εντολές του README και δεν χρειάζεται να το φτιάξει κανείς με το χέρι.
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+
+const ENV_PATH = path.join(__dirname, '.env');
+
+// 1. Φόρτωση του .env: οι τιμές του μπαίνουν στο process.env
+if (fs.existsSync(ENV_PATH)) process.loadEnvFile(ENV_PATH);
+
+// 2. Έλεγχος του μυστικού: λείπει, είναι πολύ μικρό ή είναι το δείγμα;
+const secret = process.env.JWT_SECRET || '';
+if (secret.length < 32 || secret.includes('βάλτε')) {
+  // 32 τυχαία bytes → 64 χαρακτήρες hex (πρακτικά αδύνατον να μαντευτούν)
+  const newSecret = crypto.randomBytes(32).toString('hex');
+
+  let content = fs.existsSync(ENV_PATH) ? fs.readFileSync(ENV_PATH, 'utf8') : '';
+  if (/^JWT_SECRET=.*$/m.test(content)) {
+    // Υπάρχει γραμμή JWT_SECRET → αντικαθιστούμε μόνο αυτή
+    content = content.replace(/^JWT_SECRET=.*$/m, `JWT_SECRET=${newSecret}`);
+  } else {
+    // Δεν υπάρχει → την προσθέτουμε στο τέλος
+    content += `${content && !content.endsWith('\n') ? '\n' : ''}JWT_SECRET=${newSecret}\n`;
+  }
+  fs.writeFileSync(ENV_PATH, content);
+
+  process.env.JWT_SECRET = newSecret;
+  console.log('Δημιουργήθηκε νέο τυχαίο JWT_SECRET στο .env');
 }
 
 // --- 2. Φόρτωση βιβλιοθηκών και δικών μας αρχείων ---
+// ΠΡΟΣΟΧΗ: πρέπει να γίνεται ΜΕΤΑ το βήμα 1, γιατί το auth.js διαβάζει
+// το JWT_SECRET τη στιγμή που φορτώνεται.
 const express = require('express'); // βιβλιοθήκη για web servers / APIs
 const auth = require('./auth');      // το δικό μας αρχείο για Sign up / Log in
 
