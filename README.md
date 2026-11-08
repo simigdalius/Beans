@@ -42,8 +42,8 @@
 * **Real-time Updates:** 
 
 ### Backend & Database
-* **Runtime / Framework:** Node.js (Express / NestJS) ή Python (FastAPI)
-* **Database:** 
+* **Runtime / Framework:** Node.js (Express)
+* **Database:** SQLite
 * **Push Notification **
 * **Storage:** 
 * **Task Scheduling:** 
@@ -64,7 +64,7 @@
 ## 🚀 Εγκατάσταση & Εκτέλεση
 
 ### Προαπαιτούμενα
-* Node.js (v18+)
+* Node.js (v22+)
 * Git
 * Package Manager (`npm` ή `yarn`)
 
@@ -82,14 +82,14 @@ cp .env.example .env
 npm run dev
 ```
 
-###3. Setup Frontend
+### 3. Setup Frontend
 ```bash
 cd frontend
 npm install
 npx expo start
 ```
 
-👥 Δομή Ομάδας (4 άτομα)
+## 👥 Δομή Ομάδας (4 άτομα)
 ​Frontend Developers (2):
 ​UI/UX Design & Component Implementation
 ​Camera Integration & Local Media Handling
