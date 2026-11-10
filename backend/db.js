@@ -70,9 +70,17 @@ function getTodayQuestion() {
   // Αν δεν βρέθηκε καμία, έχουν χρησιμοποιηθεί όλες
   if (!q) throw new Error('Τελείωσαν οι ερωτήσεις! Προσθέστε νέες στο questions.sql');
 
-  // 3. Σημείωσε ότι αυτή είναι η σημερινή ερώτηση
-  questionsDb.prepare('UPDATE questions SET used_on = ? WHERE id = ?').run(today, q.id);
-  return { ...q, used_on: today };
+  // 3. Σημείωσε ότι αυτή είναι η σημερινή ερώτηση και επελεξε τυχαια την ωρα
+  const dropTime = getRandomDropTime(); 
+  questionsDb.prepare('UPDATE questions SET used_on = ?, drop_time = ? WHERE id = ?').run(today, dropTime, q.id);
+  
+  return { ...q, used_on: today, drop_time: dropTime };
+}
+
+function getRandomDropTime() { //paragetai tyxaia wra apo 11 ews 00
+  const hour = Math.floor(Math.random() * (23 - 11)) + 11; // 11 έως 22
+  const minute = Math.floor(Math.random() * 60);           // 0 έως 59
+  return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
 }
 
 // Εξάγουμε τις βάσεις και τη συνάρτηση για να τις χρησιμοποιούν τα άλλα αρχεία

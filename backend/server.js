@@ -64,6 +64,7 @@ const auth = require('./auth');      // το δικό μας αρχείο για
 // Δημιουργία της εφαρμογής (του server)
 const app = express();
 
+const { getTodayQuestion } = require('./db'); //import apo db.js
 // Middleware: τρέχει πριν από κάθε αίτημα.
 // Μετατρέπει το JSON που στέλνει το κινητό σε αντικείμενο JavaScript (req.body).
 // Το όριο 10kb αποτρέπει κάποιον να στείλει τεράστια δεδομένα για να "ρίξει" τον server.
@@ -78,6 +79,71 @@ app.get('/', (req, res) => res.json({ app: 'Beans', status: 'ok' }));
 // π.χ. POST /auth/register, POST /auth/login, GET /auth/me
 app.use('/auth', auth.router);
 
+app.get('/api/daily-question', (req, res) => {
+  const question = getTodayQuestion();
+
+  // Βρίσκουμε την τωρινή ώρα σε μορφή "HH:MM" (π.χ. "14:30")
+  const currentTime = new Date().toLocaleTimeString('el-GR', {
+    timeZone: 'Europe/Athens',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+
+  if (currentTime < question.drop_time) {
+    return res.json({
+      status: "waiting",
+      drop_time: question.drop_time,
+      message: "Η ερώτηση δεν έχει αποκαλυφθεί ακόμα!"
+    });
+  }
+
+  return res.json({
+    status: "ready",
+    ...question
+  });
+});
+app.post('/api/daily-answer', (req, res) => { //ουσιαστικα διαβαζει drop_time,φτιαχνει endTime που εινΙ 5 λεπτα μετα το drop
+  const question = getTodayQuestion();
+  
+  // 1. Βρίσκουμε την τωρινή ώρα
+  const currentTime = new Date().toLocaleTimeString('el-GR', {
+    timeZone: 'Europe/Athens',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+
+  // 2. Υπολογίζουμε την ώρα λήξης (drop_time + 5 λεπτά)
+  const [dropHour, dropMinute] = question.drop_time.split(':').map(Number);
+  const totalMinutes = dropHour * 60 + dropMinute + 5; // Προσθέτουμε 5 λεπτά
+  
+  const endHour = Math.floor(totalMinutes / 60);
+  const endMinute = totalMinutes % 60;
+  
+  // Μετατροπή ξανά σε μορφή "HH:MM" (π.χ. 15:47)
+  const endTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+
+  // 3. ΕΛΕΓΧΟΙ
+  if (currentTime < question.drop_time) {
+    return res.status(403).json({ error: "Η ερώτηση δεν έχει αποκαλυφθεί ακόμα!" });
+  }
+
+  if (currentTime > endTime) {
+    return res.status(403).json({ error: "Ο χρόνος έληξε! Είχες 5 λεπτά για να απαντήσεις." });
+  }
+
+  // 4. Αποθήκευση της απάντησης
+  const { answer } = req.body; 
+  if (!answer) {
+    return res.status(400).json({ error: "Δεν γράψατε απάντηση." });
+  }
+
+  // εδω θα μπουν οι εντολες για να αποθηκευτει στη βαση η απαντηση
+  // π.χ. db.prepare('INSERT INTO answers (user_id, question_id, text) VALUES (?, ?, ?)').run(...)
+
+  return res.json({ message: "Η απάντησή σου αποθηκεύτηκε με επιτυχία!" });
+});
 // Αν το αίτημα δεν ταίριαξε με κανένα route παραπάνω → 404 (δεν βρέθηκε)
 // ΠΡΟΣΟΧΗ: πρέπει να μένει μετά από όλα τα routes.
 app.use((req, res) => res.status(404).json({ error: 'Δεν βρέθηκε.' }));
