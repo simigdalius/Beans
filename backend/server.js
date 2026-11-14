@@ -10,17 +10,6 @@
 // Εκκίνηση:
 //   npm run dev   → για ανάπτυξη (κάνει αυτόματα restart όταν αλλάζει ο κώδικας)
 //   npm start     → κανονική εκκίνηση
-//
-// Για να προσθέσετε νέα λειτουργία (π.χ. φίλους):
-//   φτιάξτε νέο αρχείο (π.χ. friends.js) με router και συνδέστε το εδώ
-//   με app.use('/friends', ...), όπως γίνεται με το auth παρακάτω.
-// =====================================================================
-
-// --- 1. Ρυθμίσεις (.env) και μυστικό κλειδί ---
-// Το JWT_SECRET είναι το "μυστικό κλειδί" με το οποίο υπογράφονται τα tokens σύνδεσης.
-// Αν κάποιος το μάθει, μπορεί να φτιάξει ψεύτικα tokens και να μπει σε όποιον
-// λογαριασμό θέλει. Γι' αυτό κάθε υπολογιστής πρέπει να έχει το ΔΙΚΟ του, τυχαίο.
-//
 // Τι κάνει ο κώδικας παρακάτω:
 //   1. Διαβάζει το αρχείο .env (αν υπάρχει)
 //   2. Αν το JWT_SECRET λείπει ή είναι ακόμα το κείμενο-δείγμα του .env.example,
@@ -52,7 +41,7 @@ if (secret.length < 32 || secret.includes('βάλτε')) {
   fs.writeFileSync(ENV_PATH, content);
 
   process.env.JWT_SECRET = newSecret;
-  console.log('Δημιουργήθηκε νέο τυχαίο JWT_SECRET στο .env');
+  console.log('New random JWT_SECRET was created in .env');
 }
 
 // --- 2. Φόρτωση βιβλιοθηκών και δικών μας αρχείων ---
@@ -94,7 +83,7 @@ app.get('/api/daily-question', (req, res) => {
     return res.json({
       status: "waiting",
       drop_time: question.drop_time,
-      message: "Η ερώτηση δεν έχει αποκαλυφθεί ακόμα!"
+      message: "Question hasn't yet been released"
     });
   }
 
@@ -126,34 +115,34 @@ app.post('/api/daily-answer', (req, res) => { //ουσιαστικα διαβα�
 
   // 3. ΕΛΕΓΧΟΙ
   if (currentTime < question.drop_time) {
-    return res.status(403).json({ error: "Η ερώτηση δεν έχει αποκαλυφθεί ακόμα!" });
+    return res.status(403).json({ error: "Question hasn't yet been released" });
   }
 
   if (currentTime > endTime) {
-    return res.status(403).json({ error: "Ο χρόνος έληξε! Είχες 5 λεπτά για να απαντήσεις." });
+    return res.status(403).json({ error: "Time is up! You have 5 minutes to answer" });
   }
 
   // 4. Αποθήκευση της απάντησης
   const { answer } = req.body; 
   if (!answer) {
-    return res.status(400).json({ error: "Δεν γράψατε απάντηση." });
+    return res.status(400).json({ error: "No answer was recorded" });
   }
 
   // εδω θα μπουν οι εντολες για να αποθηκευτει στη βαση η απαντηση
   // π.χ. db.prepare('INSERT INTO answers (user_id, question_id, text) VALUES (?, ?, ?)').run(...)
 
-  return res.json({ message: "Η απάντησή σου αποθηκεύτηκε με επιτυχία!" });
+  return res.json({ message: "Your answer was saved succesfully" });
 });
 // Αν το αίτημα δεν ταίριαξε με κανένα route παραπάνω → 404 (δεν βρέθηκε)
 // ΠΡΟΣΟΧΗ: πρέπει να μένει μετά από όλα τα routes.
-app.use((req, res) => res.status(404).json({ error: 'Δεν βρέθηκε.' }));
+app.use((req, res) => res.status(404).json({ error: 'Not Found' }));
 
 // Χειρισμός απρόβλεπτων σφαλμάτων (bug στον κώδικα κ.λπ.).
 // Το σφάλμα γράφεται στο τερματικό για εμάς, αλλά στον χρήστη στέλνουμε
 // γενικό μήνυμα, ώστε να μη φαίνονται εσωτερικές λεπτομέρειες (ασφάλεια).
 app.use((err, req, res, next) => {
   console.error(err);
-  res.status(500).json({ error: 'Κάτι πήγε στραβά.' });
+  res.status(500).json({ error: 'Something went wrong' });
 });
 
 // --- 4. Εκκίνηση ---
