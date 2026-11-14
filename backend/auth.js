@@ -49,7 +49,7 @@ function createToken(user) {
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 λεπτά σε milliseconds
   limit: 10,
-  message: { error: 'Πάρα πολλές προσπάθειες. Δοκιμάστε ξανά σε λίγο.' },
+  message: { error: 'Too many attempts. Please try again later.' },
 });
 
 // ---------------------------------------------------------------------
@@ -67,16 +67,16 @@ router.post('/register', authLimiter, async (req, res) => {
   // Username: 3-20 χαρακτήρες, μόνο λατινικά γράμματα, αριθμοί, _ και .
   if (typeof username !== 'string' || !/^[a-zA-Z0-9_.]{3,20}$/.test(username)) {
     return res.status(400).json({
-      error: 'Το username πρέπει να έχει 3-20 χαρακτήρες: γράμματα, αριθμούς, _ ή .',
+      error: 'Username must be 3-20 characters: letters, numbers, _ or .',
     });
   }
   // Email: απλός έλεγχος μορφής κάτι@κάτι.κάτι
   if (typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.status(400).json({ error: 'Μη έγκυρο email.' });
+    return res.status(400).json({ error: 'Invalid email.' });
   }
   // Κωδικός: 8-72 χαρακτήρες (το bcrypt χρησιμοποιεί μόνο τους πρώτους 72)
   if (typeof password !== 'string' || password.length < 8 || password.length > 72) {
-    return res.status(400).json({ error: 'Ο κωδικός πρέπει να έχει 8-72 χαρακτήρες.' });
+    return res.status(400).json({ error: 'Password must be 8-72 characters.' });
   }
 
   // Υπάρχει ήδη χρήστης με αυτό το username ή email;
@@ -85,7 +85,7 @@ router.post('/register', authLimiter, async (req, res) => {
     .prepare('SELECT 1 FROM users WHERE username = ? OR email = ?')
     .get(username, email);
   if (exists) {
-    return res.status(409).json({ error: 'Το username ή το email χρησιμοποιείται ήδη.' });
+    return res.status(409).json({ error: 'Username or email is already taken.' });
   }
 
   // Hash του κωδικού. Ο αριθμός 10 είναι πόσο "βαρύ" είναι το hashing:
@@ -111,7 +111,7 @@ router.post('/register', authLimiter, async (req, res) => {
 router.post('/login', authLimiter, async (req, res) => {
   const { login, password } = req.body ?? {};
   if (typeof login !== 'string' || typeof password !== 'string') {
-    return res.status(400).json({ error: 'Συμπληρώστε username/email και κωδικό.' });
+    return res.status(400).json({ error: 'Please enter your username/email and password.' });
   }
 
   // Ψάχνουμε τον χρήστη είτε με username είτε με email
@@ -125,7 +125,7 @@ router.post('/login', authLimiter, async (req, res) => {
   if (!user || !ok) {
     // Ίδιο μήνυμα και στις δύο περιπτώσεις: δεν αποκαλύπτουμε αν υπάρχει ο λογαριασμός.
     // 401 = "μη εξουσιοδοτημένος"
-    return res.status(401).json({ error: 'Λάθος στοιχεία σύνδεσης.' });
+    return res.status(401).json({ error: 'Invalid login credentials.' });
   }
 
   // Επιτυχία: επιστρέφουμε token και βασικά στοιχεία (μαζί με το theme για το UI)
@@ -150,7 +150,7 @@ function requireAuth(req, res, next) {
   // Το header έχει τη μορφή "Bearer <token>". Κρατάμε μόνο το token.
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
-  if (!token) return res.status(401).json({ error: 'Απαιτείται σύνδεση.' });
+  if (!token) return res.status(401).json({ error: 'You need to log in.' });
 
   try {
     // Ελέγχει την υπογραφή και τη λήξη του token.
@@ -158,7 +158,7 @@ function requireAuth(req, res, next) {
     req.user = jwt.verify(token, JWT_SECRET);
     next(); // όλα καλά → συνέχεια στο endpoint
   } catch {
-    res.status(401).json({ error: 'Η σύνδεση έληξε ή δεν είναι έγκυρη.' });
+    res.status(401).json({ error: 'Your session has expired or is invalid.' });
   }
 }
 
@@ -173,7 +173,7 @@ router.get('/me', requireAuth, (req, res) => {
   const user = db
     .prepare('SELECT id, username, email, theme, created_at FROM users WHERE id = ?')
     .get(req.user.id);
-  if (!user) return res.status(404).json({ error: 'Ο χρήστης δεν βρέθηκε.' });
+  if (!user) return res.status(404).json({ error: 'User not found.' });
   res.json({ user });
 });
 
